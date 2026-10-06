@@ -27,6 +27,22 @@ Open `http://localhost:8501/` for the upload form. If that port is in use, choos
 
 For an assessment using your signed-in Codex CLI, set `LLM_ENABLED=true` and `LLM_PROVIDER=codex_cli` in `.env`. No API key is needed for that option. The app sends sanitized text to the reviewer and runs Codex with shell, apps, and web search disabled. Alternatively, set `LLM_PROVIDER=api` and configure `LLM_API_KEY` and `LLM_MODEL`. With LLM disabled, the page performs sanitization only and does not create placeholder assessment scores. Results are saved under `.ready2build/manual-results/`.
 
+### Publish a public test app
+
+GitHub stores the source code; use [Streamlit Community Cloud](https://share.streamlit.io/) to run the Python app and create a shareable `streamlit.app` URL. Sign in with GitHub, choose **Create app**, select `VishnuCreat/Ready2BuildIDD_Review`, branch `main`, and entrypoint `ready2build/web.py`. The app uses `requirements.txt` for deployment dependencies.
+
+For live assessments on the hosted app, add these values under the app's **Advanced settings → Secrets**. Use your own API key and keep it in Streamlit's secrets settings; never commit it to GitHub. Requests from public users will use this configured provider account and can incur usage charges. Choose a model supported by your configured OpenAI-compatible endpoint.
+
+```toml
+LLM_ENABLED = "true"
+LLM_PROVIDER = "api"
+LLM_BASE_URL = "https://api.openai.com/v1"
+LLM_API_KEY = "replace-in-Streamlit-secrets"
+LLM_MODEL = "replace-with-a-supported-model"
+```
+
+The hosted app removes each unsanitized uploaded file after extraction. Sanitized files and review result records are still written to the app's local runtime storage; hosted runtime storage may be temporary. Deploy only if you are comfortable operating a public upload service with your configured model credentials.
+
 Set Jira configuration in `.env` for queue retrieval. A dry-run needs no write credentials and makes no external changes. LLM review, Smartsheet updates, status transitions, and SharePoint upload are independently gated by configuration; all external writes require `DRY_RUN=false`.
 
 Required for a Jira run: Jira URL, email, API token and project/queue settings. For row updates, configure the Smartsheet token, sheet ID and numeric column IDs. The manual POC can use a signed-in Codex CLI (`LLM_PROVIDER=codex_cli`) or an API provider (`LLM_PROVIDER=api`). SharePoint needs Microsoft Graph configuration. Never commit `.env` or paste credentials into source.

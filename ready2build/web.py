@@ -3,8 +3,10 @@ from datetime import datetime, timezone
 import hashlib
 import json
 import logging
+import os
 from pathlib import Path
 import re
+import tempfile
 import uuid
 
 import streamlit as st
@@ -28,6 +30,15 @@ def main():
     except ImportError:
         pass
 
+    # Streamlit Community Cloud stores secrets in st.secrets rather than .env.
+    # Preserve explicit environment variables when both are present.
+    try:
+        for key, value in st.secrets.items():
+            if key not in os.environ and isinstance(value, (str, int, float, bool)):
+                os.environ[key] = str(value)
+    except Exception:
+        pass
+
     st.set_page_config(page_title="Ready2Build IDD Review POC", layout="wide")
     st.title("Ready2Build IDD Review — POC")
     st.caption("Upload an IDD file to extract, sanitize, and review it. Jira and Smartsheet are not used in this POC.")
@@ -39,15 +50,17 @@ def main():
 
     config = Config.from_env()
     if st.button("Review IDD", type="primary"):
-        original_path = config.download_dir.parent / "manual" / "original" / _safe_name(uploaded.name)
         sanitized_path = config.sanitized_dir / "manual" / (_safe_name(uploaded.name).rsplit(".", 1)[0] + ".txt")
-        original_path.parent.mkdir(parents=True, exist_ok=True)
         sanitized_path.parent.mkdir(parents=True, exist_ok=True)
         raw = uploaded.getvalue()
-        original_path.write_bytes(raw)
         correlation_id = str(uuid.uuid5(uuid.NAMESPACE_URL, hashlib.sha256(raw).hexdigest()))
         try:
-            extracted = extract_text(original_path)
+            # Keep the unsanitized upload only in a temporary folder and remove
+            # it after extraction; do not retain original IDDs on a public host.
+            with tempfile.TemporaryDirectory(prefix="ready2build-upload-") as temp_dir:
+                original_path = Path(temp_dir) / _safe_name(uploaded.name)
+                original_path.write_bytes(raw)
+                extracted = extract_text(original_path)
             clean = sanitize(extracted, config.sanitizer_patterns)
             if not clean.strip():
                 st.error("No readable text was found in the uploaded file. Check that it is not image-only or empty.")

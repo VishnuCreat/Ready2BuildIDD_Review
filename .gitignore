@@ -9,3 +9,4 @@ pytest-cache-files-*/
 *.egg-info/
 *.py[cod]
 .ready2build/
+.streamlit/secrets.toml
