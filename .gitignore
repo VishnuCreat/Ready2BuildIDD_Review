@@ -1,0 +1,11 @@
+.env
+.venv/
+__pycache__/
+.pytest_cache/
+.pytest-temp/
+.test-*/
+.r2b-test-tmp/
+pytest-cache-files-*/
+*.egg-info/
+*.py[cod]
+.ready2build/

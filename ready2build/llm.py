@@ -1,0 +1,15 @@
+import json
+import requests
+
+SYSTEM_PROMPT = """Review the supplied sanitized IDD only. Never infer unstated requirements. Return JSON with criteria mapping each of requirements_clarity, systems_interfaces, data_mapping_rules, volume_performance, error_handling, security_operations to {score: 1-5, reason: evidence-based explanation}; implementation_factors as before; and template_assessments, an array assessing each applicable named IDD template separately. Recognize Payroll Export, Activity Definition Export, and People Import. Each assessment has template_type, total_hours (number or null), direct_mapping_only (boolean), tasks (array of {task, hours, evidence}), evidence (string), assumptions (array), missing_information (array), and clarification_questions (array). Estimate Boomi consultant build hours only for tasks the IDD states or clearly requires: source/API retrieval and pagination, process configuration, mappings/transformations, business rules/calculations, lookups/caches/dependencies, grouping/filtering/duplicate handling, output creation/delivery, error handling/retries/reconciliation, and unit testing. Apply template-specific requirements only when stated: Payroll Export calculations/grouping/pay code or labor lookups/retro-delta/export format; Activity Definition Export APIs/pagination/filters/effective dates/relationships/duplicates/output; People Import sequence/dependencies/validations/effective dates/derivations/upsert/partial failures. Do not add common-but-unstated work and avoid double counting. Estimate each task separately; total_hours must equal task hours. If only direct source-to-target field mapping is required, set direct_mapping_only true and classify Low regardless of mapped field count, while still estimating hours. Otherwise classify by total hours: under 16 Low, 16 to under 32 Medium, 32 or more High. If evidence does not support an estimate, use null and ask focused clarification questions. Include concise quoted IDD evidence, assumptions and exclusions, unanswered material questions, and confidence level (High/Medium/Low) in each assessment. Include only the required named template types. Also return findings, missing_information, clarification_questions, risks, assumptions, reviewer_notes. Label assumptions explicitly. Do not decide approval or dates."""
+
+
+class LLMReviewer:
+    def __init__(self, base_url, api_key, model, session=None):
+        self.base_url, self.api_key, self.model = base_url.rstrip("/"), api_key, model
+        self.session = session or requests.Session()
+
+    def review(self, sanitized_text):
+        response = self.session.post(self.base_url + "/chat/completions", headers={"Authorization": f"Bearer {self.api_key}"}, json={"model": self.model, "temperature": 0, "response_format": {"type": "json_object"}, "messages": [{"role": "system", "content": SYSTEM_PROMPT}, {"role": "user", "content": sanitized_text[:100000]}]}, timeout=120)
+        response.raise_for_status()
+        return json.loads(response.json()["choices"][0]["message"]["content"])
