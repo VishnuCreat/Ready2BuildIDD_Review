@@ -17,13 +17,13 @@ ready2build --poll
 ## Run the local IDD review app (no Jira required)
 
 ```powershell
-python -m pip install -e ".[documents]"
+python -m pip install -r requirements.txt
 Copy-Item .env.example .env
 # Optional: set LLM_ENABLED=true and LLM_PROVIDER=codex_cli in .env to use your signed-in Codex CLI.
 python -m ready2build.manual_server --port 8501
 ```
 
-Open `http://localhost:8501/` for the upload form. If that port is in use, choose another port, such as `--port 8502`, and open the matching URL. Keep the terminal running while using the app; press Ctrl+C to stop it. Supported upload formats depend on the optional reader libraries installed above.
+Open `http://localhost:8501/` for the upload form. If that port is in use, choose another port, such as `--port 8502`, and open the matching URL. Keep the terminal running while using the app; press Ctrl+C to stop it. The requirements install PDF, Word DOCX, and Excel readers. Run the install command in the same PowerShell/Python environment that starts the app.
 
 For an assessment using your signed-in Codex CLI, set `LLM_ENABLED=true` and `LLM_PROVIDER=codex_cli` in `.env`. No API key is needed for that option. The app sends sanitized text to the reviewer and runs Codex with shell, apps, and web search disabled. Alternatively, set `LLM_PROVIDER=api` and configure `LLM_API_KEY` and `LLM_MODEL`. With LLM disabled, the page performs sanitization only and does not create placeholder assessment scores. Results are saved under `.ready2build/manual-results/`.
 

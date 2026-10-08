@@ -8,13 +8,26 @@ SUPPORTED = {".pdf", ".docx", ".xlsx", ".csv", ".txt"}
 
 
 def available_extensions():
-    """Formats readable with the currently installed optional document libraries."""
-    result = {".csv", ".txt", ".xlsx"}
+    """Formats readable with the currently installed document libraries."""
+    result = {".csv", ".txt"}
+    if importlib.util.find_spec("openpyxl"):
+        result.add(".xlsx")
     if importlib.util.find_spec("pypdf"):
         result.add(".pdf")
     if importlib.util.find_spec("docx"):
         result.add(".docx")
     return result
+
+
+def missing_document_readers():
+    """Return install hints for formats whose optional reader is unavailable."""
+    return {
+        suffix: package for suffix, module, package in (
+            (".pdf", "pypdf", "pypdf"),
+            (".docx", "docx", "python-docx"),
+            (".xlsx", "openpyxl", "openpyxl"),
+        ) if importlib.util.find_spec(module) is None
+    }
 
 
 def extract_text(path: Path) -> str:

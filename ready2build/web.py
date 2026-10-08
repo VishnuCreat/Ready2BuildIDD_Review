@@ -13,7 +13,7 @@ import streamlit as st
 
 from ready2build.config import Config
 from ready2build.codex_cli import CodexCLIReviewer
-from ready2build.documents import available_extensions, extract_text
+from ready2build.documents import available_extensions, extract_text, missing_document_readers
 from ready2build.llm import LLMReviewer
 from ready2build.sanitizer import sanitize
 from ready2build.scoring import score_review
@@ -44,6 +44,10 @@ def main():
     st.caption("Upload an IDD file to extract, sanitize, and review it. Jira and Smartsheet are not used in this POC.")
     extensions = available_extensions()
     uploaded = st.file_uploader("Choose an IDD document", type=[s.lstrip(".") for s in sorted(extensions)])
+    missing_readers = missing_document_readers()
+    if missing_readers:
+        formats = ", ".join(f"{suffix} ({package})" for suffix, package in missing_readers.items())
+        st.warning(f"To enable these formats: {formats}, install dependencies with `python -m pip install -r requirements.txt` and restart the app.")
     if not uploaded:
         st.info("Readable file types in this environment: " + ", ".join(sorted(s.lstrip(".").upper() for s in extensions)) + ".")
         return

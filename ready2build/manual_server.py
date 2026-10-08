@@ -15,7 +15,7 @@ import uuid
 
 from .config import Config
 from .codex_cli import CodexCLIReviewer
-from .documents import available_extensions, extract_text
+from .documents import available_extensions, extract_text, missing_document_readers
 from .implementation import merge_implementation_names
 from .llm import LLMReviewer
 from .sanitizer import sanitize
@@ -43,7 +43,11 @@ def _page(body=""):
 def _form(config):
     exts = sorted(x.lstrip(".") for x in available_extensions())
     format_tags = "".join(f'<span class="format">{_e(x.upper())}</span>' for x in exts)
+    missing = missing_document_readers()
+    reader_notice = ("<div class=\"notice warn\">To enable " + _e(", ".join(missing)) +
+                     " uploads, run <code>python -m pip install -r requirements.txt</code> in this Python environment, then restart the server.</div>") if missing else ""
     return _page(f'''<section class="hero"><div class="eyebrow">Integration readiness workspace</div><h1>Make every IDD <span>build-ready.</span></h1><p>Review integration design documents for readiness, implementation complexity, and the questions your team needs answered before build.</p></section>
+{reader_notice}
 <div class="grid"><section class="card"><div class="card-head"><div><h2>Start an IDD review</h2><p class="sub">Add a document to generate an evidence-based assessment.</p></div><span class="step">01 &nbsp; DOCUMENT</span></div>
 <form id="upload-form" method="post" enctype="multipart/form-data"><label class="dropzone" id="dropzone" for="idd"><input class="file-input" id="idd" name="idd" type="file" accept="{_e(",".join("."+x for x in exts))}" required>
 <span><span class="upload-icon">↑</span><strong>Drop your IDD here</strong><p>or <span class="browse">browse files</span> on your device</p><span class="filename" id="filename">Choose a file to see its name here</span></span></label>
@@ -57,6 +61,9 @@ def _form(config):
 def _review_upload(filename, content, config):
     suffix = Path(filename).suffix.lower()
     if suffix not in available_extensions():
+        package = missing_document_readers().get(suffix)
+        if package:
+            raise ValueError(f"{suffix} reading needs {package}. In this PowerShell window run: python -m pip install -r requirements.txt, then restart the server.")
         raise ValueError("This file type is not readable in the current environment. Supported: " + ", ".join(sorted(available_extensions())))
     safe_name = re.sub(r"[^A-Za-z0-9_.-]+", "_", Path(filename).name)[:120]
     digest = hashlib.sha256(content).hexdigest()

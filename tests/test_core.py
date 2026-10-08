@@ -8,6 +8,16 @@ from ready2build.sanitizer import sanitize
 from ready2build.scoring import classify_effort, score_review
 
 
+def test_available_document_formats_reflect_installed_readers(monkeypatch):
+    from ready2build import documents
+    available = {"pypdf", "docx", "openpyxl"}
+    monkeypatch.setattr(documents.importlib.util, "find_spec", lambda name: object() if name in available else None)
+    assert documents.available_extensions() == {".pdf", ".docx", ".xlsx", ".csv", ".txt"}
+    available.clear()
+    assert documents.available_extensions() == {".csv", ".txt"}
+    assert documents.missing_document_readers() == {".pdf": "pypdf", ".docx": "python-docx", ".xlsx": "openpyxl"}
+
+
 def test_effort_tiers_boundary_hours():
     assert classify_effort(15.99) == "Low"
     assert classify_effort(16) == "Medium"
