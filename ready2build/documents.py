@@ -2,6 +2,8 @@ import csv
 import importlib.util
 import logging
 from pathlib import Path
+import xml.etree.ElementTree as ET
+import zipfile
 
 log = logging.getLogger(__name__)
 SUPPORTED = {".pdf", ".docx", ".xlsx", ".csv", ".txt"}
@@ -14,8 +16,8 @@ def available_extensions():
         result.add(".xlsx")
     if importlib.util.find_spec("pypdf"):
         result.add(".pdf")
-    if importlib.util.find_spec("docx"):
-        result.add(".docx")
+    # DOCX is a ZIP/XML format and has a standard-library fallback below.
+    result.add(".docx")
     return result
 
 
@@ -24,7 +26,6 @@ def missing_document_readers():
     return {
         suffix: package for suffix, module, package in (
             (".pdf", "pypdf", "pypdf"),
-            (".docx", "docx", "python-docx"),
             (".xlsx", "openpyxl", "openpyxl"),
         ) if importlib.util.find_spec(module) is None
     }
@@ -48,8 +49,16 @@ def extract_text(path: Path) -> str:
     if suffix == ".docx":
         try:
             from docx import Document
-        except ImportError as exc:
-            raise RuntimeError("Install the documents extra to read DOCX files") from exc
+        except ImportError:
+            # Extract paragraph text, including paragraphs inside table cells,
+            # without requiring a third-party package.
+            with zipfile.ZipFile(path) as archive:
+                root = ET.fromstring(archive.read("word/document.xml"))
+            paragraph_tag = "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}p"
+            text_tag = "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}t"
+            paragraphs = ["".join(node.text or "" for node in paragraph.iter(text_tag))
+                          for paragraph in root.iter(paragraph_tag)]
+            return "\n".join(text for text in paragraphs if text)
         doc = Document(path)
         return "\n".join([p.text for p in doc.paragraphs] + [" | ".join(c.text for c in row.cells) for table in doc.tables for row in table.rows])
     try:

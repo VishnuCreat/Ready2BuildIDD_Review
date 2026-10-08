@@ -14,8 +14,22 @@ def test_available_document_formats_reflect_installed_readers(monkeypatch):
     monkeypatch.setattr(documents.importlib.util, "find_spec", lambda name: object() if name in available else None)
     assert documents.available_extensions() == {".pdf", ".docx", ".xlsx", ".csv", ".txt"}
     available.clear()
-    assert documents.available_extensions() == {".csv", ".txt"}
-    assert documents.missing_document_readers() == {".pdf": "pypdf", ".docx": "python-docx", ".xlsx": "openpyxl"}
+    assert documents.available_extensions() == {".docx", ".csv", ".txt"}
+    assert documents.missing_document_readers() == {".pdf": "pypdf", ".xlsx": "openpyxl"}
+
+
+def test_docx_text_extraction_has_standard_library_fallback(monkeypatch):
+    import sys
+    from ready2build import documents
+    xml = b'''<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:p><w:r><w:t>People Import IDD</w:t></w:r></w:p><w:tbl><w:tr><w:tc><w:p><w:r><w:t>Employee ID</w:t></w:r></w:p></w:tc></w:tr></w:tbl></w:body></w:document>'''
+    class Archive:
+        def __init__(self, *_args, **_kwargs): pass
+        def __enter__(self): return self
+        def __exit__(self, *_args): return None
+        def read(self, _name): return xml
+    monkeypatch.setattr(documents.zipfile, "ZipFile", Archive)
+    monkeypatch.setitem(sys.modules, "docx", None)
+    assert documents.extract_text(Path("synthetic.docx")) == "People Import IDD\nEmployee ID"
 
 
 def test_effort_tiers_boundary_hours():
